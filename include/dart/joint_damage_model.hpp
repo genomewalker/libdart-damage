@@ -6,25 +6,6 @@
 
 namespace dart {
 
-/**
- * Joint Probabilistic Model for Ancient DNA Damage Detection
- *
- * Unifies Channel A (nucleotide frequencies), Control channel, and Channel B
- * (stop codon conversion) under a single Bayesian framework.
- *
- * Model:
- *   δ(p) = δ_max · exp(-λp)           -- damage rate at position p
- *   a(p) = a_max · exp(-λp)           -- artifact/composition rate (shared)
- *
- * Observations (binomial):
- *   Channel A: π_TC(p) = b_TC + a(p) + (1 - b_TC - a(p)) · δ(p)
- *   Control:   π_AG(p) = b_AG + a(p)
- *   Channel B: π_stop(p) = b_stop + (1 - b_stop) · δ(p)
- *
- * The control channel shares the artifact term but NOT the damage term,
- * which identifies composition artifacts vs real damage.
- */
-
 struct JointDamageResult {
     // Fitted parameters
     float delta_max = 0.0f;      // Maximum damage rate at terminal (δ_max)
@@ -142,10 +123,6 @@ private:
     }
 };
 
-// ============================================================================
-// Header-only implementation
-// ============================================================================
-
 inline float JointDamageModel::log_likelihood(
     const JointDamageSuffStats& stats,
     float delta_max, float lambda, float a_max,
@@ -182,8 +159,6 @@ inline float JointDamageModel::optimize_a_max(
     float b_tc, float b_ag)
 {
     // Golden section search for a_max in [-0.3, 0.3]
-    // (Faster than Newton for this 1D problem)
-
     const float phi = 0.618033988749895f;
     float a = -0.3f, b = 0.3f;
     float c = b - phi * (b - a);
@@ -310,11 +285,6 @@ inline JointDamageResult JointDamageModel::fit(const JointDamageSuffStats& stats
 
     return result;
 }
-
-// ============================================================================
-// Two-component mixture model for GC-stratified damage
-// Separates damaged/undamaged subpopulations in heterogeneous metagenomes
-// ============================================================================
 
 struct DamageMixtureResult {
     float d_mean = 0.0f;         // GC-weighted average (reference-free population avg)

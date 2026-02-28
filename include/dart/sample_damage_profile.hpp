@@ -1,8 +1,8 @@
 #pragma once
 
 #include "types.hpp"
-#include "joint_damage_model.hpp"  // Joint probabilistic damage model
-#include "mixture_damage_model.hpp"  // Durbin-style mixture model
+#include "joint_damage_model.hpp"
+#include "mixture_damage_model.hpp"
 #include <string>
 #include <vector>
 #include <unordered_map>
@@ -75,9 +75,7 @@ struct SampleDamageProfile {
     float lambda_5prime = 0.3f;  // Decay constant for 5' end (estimated from data)
     float lambda_3prime = 0.3f;  // Decay constant for 3' end (estimated from data)
 
-    // Briggs-like damage model parameters (fast closed-form estimation)
-    // Model: δ(pos) = δ_s * P_overhang(pos) + δ_d * (1 - P_overhang(pos))
-    // Where: P_overhang(pos) ≈ (1-λ)^pos (geometric distribution approximation)
+    // Briggs damage model parameters: δ(pos) = δ_s·P_overhang(pos) + δ_d·(1-P_overhang(pos))
     float delta_s_5prime = 0.0f;  // Single-stranded deamination rate at 5' end
     float delta_d_5prime = 0.0f;  // Double-stranded (background) deamination at 5'
     float delta_s_3prime = 0.0f;  // Single-stranded deamination rate at 3' end
@@ -85,9 +83,7 @@ struct SampleDamageProfile {
     float r_squared_5prime = 0.0f;  // Goodness of fit for 5' model
     float r_squared_3prime = 0.0f;  // Goodness of fit for 3' model
 
-    // Codon-position-specific damage analysis (exploits reading frame information)
-    // Ancient DNA shows characteristic pattern: pos3 (wobble) > pos1 > pos2
-    // because wobble position damage is often silent (synonymous)
+    // Codon-position-specific damage analysis
     float codon_pos1_damage = 0.0f;  // C→T rate at codon position 1
     float codon_pos2_damage = 0.0f;  // C→T rate at codon position 2
     float codon_pos3_damage = 0.0f;  // C→T rate at codon position 3 (wobble)
@@ -116,12 +112,7 @@ struct SampleDamageProfile {
     LibraryType library_type = LibraryType::DOUBLE_STRANDED;  // Default to double-stranded
     LibraryType forced_library_type = LibraryType::UNKNOWN;  // User override (UNKNOWN = auto-detect)
 
-    // Inverted pattern detection (terminal T/(T+C) < interior)
-    // When true, reference-free damage detection failed due to:
-    // - AT-rich organisms with terminal artifacts
-    // - Adapter contamination
-    // - Quality trimming bias
-    // Users should use metaDMG or other reference-based tools
+    // Inverted pattern: terminal T/(T+C) < interior (reference-free detection unreliable)
     bool inverted_pattern_5prime = false;  // 5' terminal T/(T+C) < interior
     bool inverted_pattern_3prime = false;  // 3' terminal A/(A+G) < interior
     float terminal_gradient_5prime = 0.0f;  // pos0 - pos10-14 average (negative = inverted)
@@ -196,28 +187,13 @@ struct SampleDamageProfile {
     float ctrl_decay_llr_5prime = 0.0f; // Log-likelihood ratio for 5' control channel
     float ctrl_decay_llr_3prime = 0.0f; // Log-likelihood ratio for 3' control channel
 
-    // Delta LLR: damage channel - control channel
-    // Positive = damage channel has stronger decay than control = real damage
-    // Near zero = both channels decay similarly = composition/trimming artifact
     float delta_llr_5prime = 0.0f;      // decay_llr - ctrl_decay_llr at 5'
     float delta_llr_3prime = 0.0f;      // decay_llr - ctrl_decay_llr at 3'
 
-    // Channel divergence (damage channel vs control channel)
-    // High divergence = real damage (only damage channel elevated)
-    // Low divergence = composition bias (both channels elevated together)
     float channel_divergence_5prime = 0.0f;  // |damage_shift - control_shift| at 5'
     float channel_divergence_3prime = 0.0f;  // |damage_shift - control_shift| at 3'
 
-    // =========================================================================
-    // CHANNEL B: Convertible stop codon tracking (translation disruption signal)
-    // Independent detector for real C→T damage vs compositional variation
-    //
-    // Tracks CAA→TAA, CAG→TAG, CGA→TGA conversions by nucleotide position
-    // Real damage: should show exponential decay matching Channel A
-    // Compositional variation: should be flat (no position dependence)
-    // =========================================================================
-
-    // Convertible codon pair counts at 5' end by nucleotide position (0-14)
+    // Channel B: convertible stop codon counts at 5' end by nucleotide position (0-14)
     // Position = nucleotide position of the C/T in the codon (from read start)
     // For CAA/TAA: position of the first base (C or T)
     // Exposure = CAA + TAA, Stops = TAA
@@ -254,14 +230,7 @@ struct SampleDamageProfile {
     bool channel_b_quantifiable = false; // True if Channel B can provide d_max estimate
     bool channel_b_inverted = false;     // True if slope <= 0 (terminal stops LOWER than baseline)
 
-    // =========================================================================
-    // CHANNEL C: Oxidative stop codon tracking (G→T transversions)
-    // Tracks GAG→TAG, GAA→TAA, GGA→TGA conversions by nucleotide position
-    // Unlike deamination (terminal-enriched), oxidation is UNIFORM across reads
-    // Real oxidation: should be uniform (no position dependence)
-    // Deamination: should show exponential decay at termini
-    // =========================================================================
-
+    // Channel C: oxidative stop codon tracking (G→T transversions, uniform across reads)
     std::array<double, 15> convertible_gag_5prime = {};      // GAG (Glu) codons at 5'
     std::array<double, 15> convertible_tag_ox_5prime = {};   // TAG (Stop) from G→T at 5'
     std::array<double, 15> convertible_gaa_5prime = {};      // GAA (Glu) codons at 5'
@@ -282,12 +251,7 @@ struct SampleDamageProfile {
     float ox_uniformity_ratio = 0.0f;   // terminal/interior (≈1 = uniform = real oxidation)
     bool channel_c_valid = false;
 
-    // =========================================================================
-    // CHANNEL D: G→T / C→A transversion tracking (oxidative damage)
-    // 8-oxoG causes G→T on one strand, appears as C→A on complement
-    // Key distinguishing feature: UNIFORM across read (not terminal-enriched)
-    // =========================================================================
-
+    // Channel D: G→T / C→A transversion tracking (8-oxoG, uniform across read)
     std::array<double, 15> g_count_5prime = {};     // G count at each 5' position
     std::array<double, 15> t_from_g_5prime = {};    // T where G expected (from G→T)
     std::array<double, 15> c_count_ox_5prime = {};  // C count for oxidation tracking
@@ -313,21 +277,14 @@ struct SampleDamageProfile {
     bool ox_damage_detected = false;
     bool ox_is_artifact = false;
 
-    // =========================================================================
-    // CHANNEL E: Depurination detection (purine loss at strand breaks)
-    // =========================================================================
-
+    // Channel E: depurination (purine loss at strand breaks)
     float purine_rate_terminal_5prime = 0.0f;
     float purine_rate_interior = 0.0f;
     float purine_enrichment_5prime = 0.0f;
     float purine_enrichment_3prime = 0.0f;
     bool depurination_detected = false;
 
-    // =========================================================================
-    // GC-STRATIFIED DAMAGE ESTIMATION
-    // Separate damage calculation per GC bin to handle metagenome heterogeneity
-    // GC computed from interior positions (5+) to avoid damage bias
-    // =========================================================================
+    // GC-stratified damage: separate estimation per GC bin (interior GC to avoid bias)
     static constexpr int N_GC_BINS = 10;  // 0-10%, 10-20%, ..., 90-100%
 
     struct GCBinStats {
@@ -374,10 +331,6 @@ struct SampleDamageProfile {
     int gc_peak_bin = -1;                        // Which bin has peak damage
     bool gc_stratified_valid = false;            // At least one bin has valid estimate
 
-    // =========================================================================
-    // GC-CONDITIONAL DAMAGE SUMMARY
-    // Key metrics for reference-free damage quantification
-    // =========================================================================
     float pi_damaged = 0.0f;          // Fraction of terminal obs from damaged bins
     float d_ancient = 0.0f;           // E[δ | damaged bins] - severity among damaged
     float d_population = 0.0f;        // E[δ] over all bins - average across all DNA
@@ -387,11 +340,7 @@ struct SampleDamageProfile {
     bool damage_validated = false;  // True if both channels agree on damage
     bool damage_artifact = false;   // True if Channel A fires but Channel B doesn't
 
-    // =========================================================================
-    // JOINT PROBABILISTIC MODEL RESULTS
-    // Unified Bayesian model combining Channel A, Control, and Channel B
-    // Replaces ad-hoc two-channel thresholds with principled BIC comparison
-    // =========================================================================
+    // Joint probabilistic model results (BIC comparison of damage vs no-damage)
     float joint_delta_max = 0.0f;      // MLE estimate of damage rate
     float joint_lambda = 0.0f;         // Decay constant
     float joint_a_max = 0.0f;          // Artifact amplitude (signed)
@@ -402,11 +351,7 @@ struct SampleDamageProfile {
     float joint_p_damage = 0.0f;       // P(damage | data)
     bool joint_model_valid = false;    // Sufficient data for joint model
 
-    // =========================================================================
-    // DURBIN-STYLE MIXTURE MODEL RESULTS
-    // K-component mixture over organism classes for principled quantification
-    // d_population = what we observe, d_reference = metaDMG proxy
-    // =========================================================================
+    // Mixture model results (K-component EM over GC-stratified bins)
     int mixture_K = 0;                 // Number of classes selected by BIC
     float mixture_d_population = 0.0f; // E[δ] over all C-sites
     float mixture_d_ancient = 0.0f;    // E[δ | δ > 5%] (ancient tail)
@@ -415,22 +360,7 @@ struct SampleDamageProfile {
     float mixture_bic = 0.0f;          // BIC for model selection
     bool mixture_converged = false;    // Did EM converge?
 
-    // =========================================================================
-    // D_METAMATCH: ALIGNABILITY-WEIGHTED DAMAGE ESTIMATE (metaDMG-comparable)
-    // Reference-free proxy for what metaDMG would report
-    //
-    // metaDMG uses aligned reads (selection bias toward high-quality sequences).
-    // AGP's d_global uses ALL reads. The gap arises because alignable reads
-    // tend to show cleaner damage signal.
-    //
-    // Solution: Weight damage contribution by "alignability proxy" using:
-    // - Hexamer LLR (coding signal strength)
-    // - Stop codon density (ORF intactness)
-    // - GC content (closer to reference-typical)
-    //
-    // Formula: d_metamatch = d_global + γ × (d_weighted - d_global)
-    // where γ is confidence based on Channel B LLR strength
-    // =========================================================================
+    // Alignability-weighted damage estimate (proxy for reference-based tools)
     float d_metamatch = 0.0f;              // Calibrated metaDMG-comparable estimate
     float d_alignability_weighted = 0.0f;  // Raw alignability-weighted d_max
     float metamatch_gamma = 0.0f;          // Blending coefficient (0 = use d_global, 1 = use weighted)
@@ -460,10 +390,8 @@ struct SampleDamageProfile {
         return 0.50f;  // Fallback
     }
 
-    bool is_valid() const { return n_reads >= 1000; }  // Need enough reads
+    bool is_valid() const { return n_reads >= 1000; }
 
-    // Check if damage detection is unreliable
-    // Unreliable if: hexamer inverted at either end, OR composition bias at either end
     bool is_detection_unreliable() const {
         return inverted_pattern_5prime || inverted_pattern_3prime ||
                composition_bias_5prime || composition_bias_3prime;
@@ -478,15 +406,9 @@ struct SampleDamageProfile {
         }
     }
 
-    // =========================================================================
-    // GC-CONDITIONAL PER-READ DAMAGE HELPERS
-    // =========================================================================
-
     // Get GC bin index (0-9) for a sequence based on interior GC content
     static int get_gc_bin(const std::string& seq) {
-        if (seq.length() < 20) return 4;  // Default to middle bin for short seqs
-
-        // Compute GC from interior positions (5+) to avoid terminal damage bias
+        if (seq.length() < 20) return 4;
         size_t gc = 0, total = 0;
         size_t start = std::min(size_t(5), seq.length() / 4);
         size_t end = seq.length() - start;
@@ -535,14 +457,7 @@ struct SampleDamageProfile {
     }
 };
 
-// ============================================================================
-// Tri-state damage validation
-// Unified semantics for Channel A + Channel B decision:
-//   VALIDATED:    Both channels agree → full damage probability
-//   CONTRADICTED: Channel A fires but Channel B negative → hard suppression
-//   UNVALIDATED:  Insufficient Channel B data → soft suppression
-// ============================================================================
-
+// Tri-state validation: VALIDATED (both channels), CONTRADICTED (A only), UNVALIDATED (no B data)
 enum class DamageValidationState {
     VALIDATED,      // Both channels fired → full damage
     CONTRADICTED,   // Channel A fired but Channel B negative → artifact
@@ -563,7 +478,6 @@ inline DamageValidationState get_damage_validation_state(const SampleDamageProfi
     return DamageValidationState::UNVALIDATED;
 }
 
-// Returns suppression factor: 1.0 (full), 0.0 (hard suppress), 0.5 (soft suppress)
 inline float get_damage_suppression_factor(DamageValidationState state) {
     switch (state) {
         case DamageValidationState::VALIDATED:    return 1.0f;
@@ -573,7 +487,6 @@ inline float get_damage_suppression_factor(DamageValidationState state) {
     return 1.0f;  // Unreachable, but satisfies compiler
 }
 
-// Convenience: get factor directly from profile
 inline float get_damage_suppression_factor(const SampleDamageProfile& profile) {
     return get_damage_suppression_factor(get_damage_validation_state(profile));
 }
