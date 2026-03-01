@@ -135,7 +135,7 @@ struct SampleDamageProfile {
     bool high_asymmetry = false;  // True if asymmetry > 0.5 (possible artifact)
 
     // Track source of d_max_combined estimate
-    enum class DmaxSource { AVERAGE, MIN_ASYMMETRY, MAX_SS_ASYMMETRY, FIVE_PRIME_ONLY, THREE_PRIME_ONLY, CHANNEL_B_STRUCTURAL, NONE };
+    enum class DmaxSource { AVERAGE, MIN_ASYMMETRY, MAX_SS_ASYMMETRY, FIVE_PRIME_ONLY, THREE_PRIME_ONLY, CHANNEL_B_STRUCTURAL, CHANNEL_B3_STRUCTURAL, NONE };
     DmaxSource d_max_source = DmaxSource::AVERAGE;
 
     const char* d_max_source_str() const {
@@ -146,6 +146,7 @@ struct SampleDamageProfile {
             case DmaxSource::FIVE_PRIME_ONLY: return "5prime_only";
             case DmaxSource::THREE_PRIME_ONLY: return "3prime_only";
             case DmaxSource::CHANNEL_B_STRUCTURAL: return "channel_b_structural";
+            case DmaxSource::CHANNEL_B3_STRUCTURAL: return "channel_b3_structural";
             case DmaxSource::NONE: return "none";
             default: return "unknown";
         }
@@ -226,6 +227,30 @@ struct SampleDamageProfile {
     float channel_b_slope = 0.0f;        // Raw WLS slope (positive = damage, negative = inverted)
     bool channel_b_quantifiable = false; // True if Channel B can provide d_max estimate
     bool channel_b_inverted = false;     // True if slope <= 0 (terminal stops LOWER than baseline)
+
+    // Channel B₃': G→A stop codon conversion at 3' end (validates SS library damage)
+    // TGG (Trp) is the only non-stop codon convertible to a stop via single G→A:
+    //   TGG + b1 G→A → TAG (amber stop)
+    //   TGG + b2 G→A → TGA (opal stop)
+    // Position p = nucleotide distance of codon's last base from the 3' terminus
+    std::array<double, 15> convertible_tgg_3prime = {};      // TGG (Trp) codons
+    std::array<double, 15> convertible_tag_ga_3prime = {};   // TAG from TGG b1 G→A
+    std::array<double, 15> convertible_tga_ga_3prime = {};   // TGA from TGG b2 G→A
+
+    double convertible_tgg_interior = 0.0;
+    double convertible_tag_ga_interior = 0.0;
+    double convertible_tga_ga_interior = 0.0;
+
+    float stop_conversion_rate_baseline_3prime = 0.0f;
+    float stop_decay_llr_3prime = 0.0f;
+    float stop_amplitude_3prime = 0.0f;
+    bool  channel_b3_valid = false;
+
+    float d_max_from_channel_b3 = 0.0f;
+    float channel_b3_weight = 0.0f;
+    float channel_b3_slope = 0.0f;
+    bool  channel_b3_quantifiable = false;
+    bool  channel_b3_inverted = false;
 
     // Channel C: oxidative stop codon tracking (G→T transversions, uniform across reads)
     std::array<double, 15> convertible_gag_5prime = {};      // GAG (Glu) codons at 5'
