@@ -1535,7 +1535,13 @@ void FrameSelector::finalize_sample_profile(SampleDamageProfile& profile) {
 
             if (eff_bic_ds < best) {
                 best = eff_bic_ds;
-                profile.library_type = SampleDamageProfile::LibraryType::DOUBLE_STRANDED;
+                // M_DS: smooth 3' G→A decay but no pos-0 spike (or spike below amplitude gate).
+                // A genuine DS library producing smooth 3' decay must also show 5' C→T (same
+                // deamination process). If d_max_5 < 0.01, the smooth 3' decay comes from
+                // complement-orientation SS reads — call SS.
+                profile.library_type = (profile.max_damage_5prime < 0.01f)
+                    ? SampleDamageProfile::LibraryType::SINGLE_STRANDED
+                    : SampleDamageProfile::LibraryType::DOUBLE_STRANDED;
             }
             if (eff_bic_ss < best) {
                 best = eff_bic_ss;
