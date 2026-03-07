@@ -1,27 +1,25 @@
 # libdart-damage
 
-**Reference-free ancient DNA damage estimation and library-type classification from raw FASTQ reads.**
+Reference-free ancient DNA damage estimation and library-type classification from raw FASTQ reads.
 
-Ancient DNA carries a chemical fingerprint of time: cytosine deamination converts C→T at 5' read ends and G→A at 3' ends, with rates decaying exponentially away from each terminus. libdart-damage quantifies this damage directly from FASTQ sequences — no reference genome, no alignment — and automatically classifies each library as double-stranded, single-stranded, or undetermined using a 4-channel joint BIC model.
+Cytosine deamination converts C→T at 5' read ends and G→A at 3' ends, with rates decaying exponentially away from each terminus. libdart-damage quantifies this damage directly from FASTQ sequences, without a reference genome or alignment, and classifies each library as double-stranded, single-stranded, or undetermined using a 4-channel joint BIC model.
 
 ---
 
 ## Why reference-free?
 
-Reference-based damage estimation (mapDamage, metaDMG) requires a mapped BAM file. In many aDNA workflows — particularly metagenomics, sediment cores, or pre-screening pipelines — you want damage information before alignment, either to guide deduplication parameters or to triage samples. libdart-damage fills this gap.
+Reference-based damage estimation (mapDamage, metaDMG) requires a mapped BAM file. In aDNA workflows where damage information is needed before alignment (metagenomics, sediment cores, pre-screening), libdart-damage operates on raw sequences to guide deduplication parameters and sample triage.
 
 ---
 
 ## What it classifies
-
-Ancient DNA library preparation matters for deduplication and damage masking:
 
 | Library type | Damage pattern |
 |---|---|
 | Double-stranded (DS) | Symmetric C→T at 5' and G→A at 3', exponential decay |
 | DS + end-repair artifact | As above plus a G→A spike at 3' position 0 |
 | Single-stranded (SS) | Asymmetric: spike-only, C→T at both ends, or mixed |
-| UNKNOWN | No signal above null model — zero-damage or heavily modern |
+| UNKNOWN | No signal above null model (zero-damage or heavily modern) |
 
 The BIC classifier uses four channels (ct5, ga3, ga0, ct3) and seven composite models to distinguish these patterns without user input.
 
@@ -62,7 +60,7 @@ Tested on 315 Mediterranean sediment aDNA libraries (two independent datasets):
 | Dataset 1 (91 samples) | 88 | 3 | 0 | **100%** |
 | Dataset 2 (224 samples) | 193 | 28 | 3 | **98.5%** |
 
-UNKNOWN = no model beats the null (zero-damage libraries where library type cannot be inferred from sequence alone).
+UNKNOWN: no model beats the null (zero-damage libraries where library type cannot be inferred from sequence alone).
 
 ---
 
@@ -93,6 +91,6 @@ target_link_libraries(your_target PRIVATE dart-damage)
 
 Full methods, API reference, and changelog: **https://genomewalker.github.io/libdart-damage**
 
-- [Methods](https://genomewalker.github.io/libdart-damage/methods/) — damage model equations, BIC classifier design, rescue rules
-- [API Reference](https://genomewalker.github.io/libdart-damage/api/) — FrameSelector methods, SampleDamageProfile fields
-- [Changelog](https://genomewalker.github.io/libdart-damage/changelog/) — recent changes and milestones
+- [Methods](https://genomewalker.github.io/libdart-damage/methods/): damage model equations, BIC classifier design, rescue rules
+- [API Reference](https://genomewalker.github.io/libdart-damage/api/): FrameSelector methods, SampleDamageProfile fields
+- [Changelog](https://genomewalker.github.io/libdart-damage/changelog/): recent changes and milestones

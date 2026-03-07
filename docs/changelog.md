@@ -4,13 +4,13 @@
 
 ### Added
 - `UNKNOWN` library-type category when no model beats M_bias (zero-damage libraries)
-- GA0 bilateral rescue: `spike_is_ss && d5 ≤ 0.005 → SS` — validated on 24 DS controls (all d5 ≥ 0.11)
+- GA0 bilateral rescue: `spike_is_ss && d5 ≤ 0.005 → SS`, validated on 24 DS controls (all d5 ≥ 0.11)
 - Channel B₃′: G→A stop codon conversion at 3' end for SS library damage validation
 
 ### Fixed
 - Bug: missing `best = bic_M_DS_spike` update in spike_is_ss branch of waterfall
 - Bug: `best_ss` included M_SS_orig without applying the `ct3.ΔBIC > 0` gate
-- Bug: M_DS_spike rescue could fire when M_DS_symm_art won via joint fit with marginal ct5/ga3 ΔBIC ≤ 0 — now restricted to `ds_spike_won`
+- Bug: M_DS_spike rescue could fire when M_DS_symm_art won via joint fit with marginal ct5/ga3 ΔBIC ≤ 0, now restricted to `ds_spike_won`
 
 ### Validation
 - Dataset 1 (46 DS + 45 SS): 88/91 correct, 3 UNKNOWN (100% on determined calls)

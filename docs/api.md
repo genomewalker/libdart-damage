@@ -48,7 +48,7 @@ static void update_sample_profile_weighted(
     float weight);
 ```
 
-Weighted accumulation — useful for alignability-weighted damage estimation.
+Weighted accumulation for alignability-weighted damage estimation.
 
 ---
 
@@ -97,7 +97,7 @@ All fields are public. Key results after `finalize_sample_profile`:
 | `d_max_combined` | `float` | Final asymmetry-aware D_max estimate |
 | `lambda_5prime` | `float` | Fitted decay constant $\lambda$ at 5' |
 | `lambda_3prime` | `float` | Fitted decay constant $\lambda$ at 3' |
-| `asymmetry` | `float` | `|d5 - d3| / mean(d5, d3)` — >0.5 flagged as suspicious |
+| `asymmetry` | `float` | `\|d5 - d3\| / mean(d5, d3)`, >0.5 flagged as suspicious |
 
 ### Library-type classification
 
@@ -107,7 +107,7 @@ All fields are public. Key results after `finalize_sample_profile`:
 | `library_type_auto_detected` | `bool` | `true` if set by classifier, `false` if user-forced |
 | `library_type_str()` | `const char*` | `"double-stranded"`, `"single-stranded"`, `"unknown"` |
 
-`LibraryType::UNKNOWN` means no model beat the null (M_bias) — insufficient damage signal for a confident call. Treat as DS for deduplication unless metadata is available.
+`LibraryType::UNKNOWN` means no model beat the null (M_bias): insufficient damage signal for a confident call. Treat as DS for deduplication unless metadata is available.
 
 ### BIC model scores (library-type classifier)
 
@@ -118,7 +118,7 @@ All fields are public. Key results after `finalize_sample_profile`:
 | `library_bic_ss` | `double` | Best SS model BIC |
 | `library_bic_mix` | `double` | BIC of M_SS_full (4-channel unconstrained) |
 
-BIC differences: `library_bic_ds - library_bic_ss` > 0 means SS is favoured. Values reach ~10⁹ at high coverage — stored as `double` to preserve precision.
+`library_bic_ds - library_bic_ss` > 0 means SS is favoured. Values reach ~10⁹ at high coverage; stored as `double` to preserve precision.
 
 ### Per-channel classifier amplitudes and ΔBIC
 
@@ -151,7 +151,7 @@ All arrays are 15 elements, indexed 0–14 from the read terminus.
 | `damage_validated` | `bool` | Channel A and B agree |
 | `damage_artifact` | `bool` | Channel A fires, Channel B contradicts |
 | `terminal_inversion` | `bool` | Terminal damage rate < interior (detection unreliable) |
-| `composition_bias_5prime/3prime` | `bool` | Control channel comparable to damage channel → likely bias |
+| `composition_bias_5prime/3prime` | `bool` | Control channel comparable to damage channel, likely bias |
 | `is_valid()` | `bool` | `n_reads >= 1000` |
 | `is_detection_unreliable()` | `bool` | Any inversion or composition bias flag is set |
 
@@ -195,7 +195,6 @@ dart::FrameSelector::finalize_sample_profile(final_profile);
 
 ```cpp
 dart::SampleDamageProfile profile = /* ... */;
-// Override auto-detection
 profile.forced_library_type = dart::SampleDamageProfile::LibraryType::DOUBLE_STRANDED;
 ```
 

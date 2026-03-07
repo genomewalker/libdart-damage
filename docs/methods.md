@@ -20,10 +20,10 @@ This matches the definition used by metaDMG and mapDamage.
 
 libdart-damage scans each read and accumulates base counts at the first and last 15 positions. For each position $p$:
 
-- **5' damage channel (ct5)**: $r_p = T_p / (T_p + C_p)$ — excess T where C expected
-- **3' damage channel (ga3)**: $r_p = A_p / (A_p + G_p)$ — excess A where G expected
-- **5' control channel**: $A_p / (A_p + G_p)$ at 5' end — should be flat if ct5 is real
-- **3' control channel (ct3)**: $T_p / (T_p + C_p)$ at 3' end — carries SS original-orientation signal
+- **5' damage channel (ct5)**: $r_p = T_p / (T_p + C_p)$, excess T where C expected
+- **3' damage channel (ga3)**: $r_p = A_p / (A_p + G_p)$, excess A where G expected
+- **5' control channel**: $A_p / (A_p + G_p)$ at 5' end, should be flat if ct5 is real
+- **3' control channel (ct3)**: $T_p / (T_p + C_p)$ at 3' end, carries SS original-orientation signal
 
 The middle third of each read (positions 30 to $L-30$) provides the background baseline $b$.
 
@@ -43,16 +43,16 @@ where $n_p$ is coverage (T+C count) at position $p$.
 |-------------|----------------|
 | Double-stranded (DS) | Symmetric: ct5 ≈ ga3, both exponential decay |
 | DS + end-repair artifact | As above + GA0 spike at 3' pos-0 |
-| Single-stranded (SS) — complement orientation | GA0 spike only; no ct5, no ga3 smooth decay |
-| SS — original orientation | ct5 + ct3 (C→T at both ends); no ga3 |
-| SS — mixed (both orientations) | ct5 + ga3 + GA0; asymmetric |
+| Single-stranded (SS), complement orientation | GA0 spike only; no ct5, no ga3 smooth decay |
+| SS, original orientation | ct5 + ct3 (C→T at both ends); no ga3 |
+| SS, mixed (both orientations) | ct5 + ga3 + GA0; asymmetric |
 
 ### Four channels and the GA0 spike
 
 In addition to the smooth exponential channels, a single-position model fits position 0 of the 3' end (**ga0**). This captures:
 
-- DS end-repair artifacts: bilateral — both 5' pos-0 CT and 3' pos-0 GA elevated
-- SS complement-orientation reads: unilateral — 3' GA0 spike only, no 5' counterpart
+- DS end-repair artifacts: bilateral, both 5' pos-0 CT and 3' pos-0 GA elevated
+- SS complement-orientation reads: unilateral, 3' GA0 spike only, no 5' counterpart
 
 ### BIC models
 
@@ -68,7 +68,7 @@ Seven composite BIC models partition the four channels into active (alt) and ina
 | M_SS_orig | alt | null | null | alt | SS original-orientation only |
 | M_SS_asym | alt | null | alt | null | SS both orientations, no smooth ga3 |
 
-↑ `joint` = ct5 and ga3 share one amplitude parameter (M_DS_symm constraint). This is 1 free parameter for 2 channels — if ct5 ≠ ga3, the joint fit is penalised and a pure SS model wins.
+↑ `joint` = ct5 and ga3 share one amplitude parameter (M_DS_symm constraint). This is 1 free parameter for 2 channels; if ct5 ≠ ga3, the joint fit is penalised and a pure SS model wins.
 
 Each composite BIC is the sum of component BICs:
 
@@ -89,7 +89,7 @@ The classifier runs a waterfall over models in this order:
 7. M_DS_spike as SS (only when `spike_is_ss = true`) — SS
 8. M_SS_asym (only when `spike_is_ss = true`) — SS
 
-`spike_is_ss = (ga0.amplitude ≥ 0.10)` — a GA0 spike above 10% amplitude is too large to be a DS end-repair artifact; it enters the SS model set.
+`spike_is_ss = (ga0.amplitude ≥ 0.10)`: a GA0 spike above 10% amplitude is too large to be a DS end-repair artifact and enters the SS model set.
 
 ### Post-hoc symmetry check
 
@@ -99,7 +99,7 @@ If DS wins but the ct5/ga3 amplitude ratio is highly asymmetric, the DS symmetry
 if DS wins AND ga3.ΔBIC > 30,000 AND ct5.ΔBIC / ga3.ΔBIC < 0.50 → SS
 ```
 
-This catches SS libraries where original-orientation reads dominate ct5 but complement reads dominate ga3, creating apparent asymmetry that breaks M_DS_symm.
+Applied when SS libraries have original-orientation reads dominating ct5 and complement reads dominating ga3, creating apparent asymmetry that breaks M_DS_symm.
 
 ### Rescue rules
 
@@ -110,7 +110,7 @@ if DS wins AND ds_spike_won AND ct5.ΔBIC ≤ 0 AND ga3.ΔBIC ≤ 0
    AND ga0.ΔBIC > 0 AND ga0.amplitude > 0.02 AND d5 ≤ 0.005 → SS
 ```
 
-**GA0 bilateral rescue** (for `spike_is_ss = true`): when a large GA0 spike (≥ 0.10) drives M_DS_symm_art to win, discriminate DS bilateral from SS complement-only using d5:
+**GA0 bilateral rescue** (for `spike_is_ss = true`): when a large GA0 spike (≥ 0.10) drives M_DS_symm_art to win, d5 discriminates DS bilateral from SS complement-only:
 
 ```
 if DS wins AND spike_is_ss AND ga0.ΔBIC > 0 AND d5 ≤ 0.005 → SS
@@ -120,20 +120,20 @@ Validated on 24 DS controls with ga0_amp ≥ 0.10: all have d5 ≥ 0.11. All SS 
 
 ### UNKNOWN category
 
-If no model beats M_bias (`best == BIC(M_bias)` exactly), the library has no detectable damage in any channel. The result is `UNKNOWN` rather than a default DS call. This is honest abstention — the caller should use `--library-type ds` or provide metadata.
+If no model beats M_bias (`best == BIC(M_bias)` exactly), the library has no detectable damage in any channel. The result is `UNKNOWN` rather than a default DS call. The caller should use `--library-type ds` or provide metadata.
 
 ---
 
 ## Multi-channel validation
 
-Beyond library typing, libdart-damage uses five independent damage channels to cross-validate the C→T signal:
+libdart-damage uses five independent damage channels to cross-validate the C→T signal:
 
 | Channel | Signal | Notes |
 |---------|--------|-------|
 | A | C→T rate per position | Primary deamination channel |
 | B | Stop codon conversion (CAA/CAG/CGA → TAA/TAG/TGA) at 5' | Sequence-composition-independent |
 | B₃′ | Stop codon conversion via G→A at 3' (TGG → TAG/TGA) | Validates SS 3' damage |
-| C | G→T transversions (8-oxoG) | Uniform across read → composition artifact flag |
+| C | G→T transversions (8-oxoG) | Uniform across read, composition artifact flag |
 | D | G→T / C→A transversions (oxidative) | Uniform signal distinguishes from deamination |
 
 A library is `damage_validated` when both Channel A and Channel B agree. If Channel A fires but Channel B contradicts it, `damage_artifact = true` (likely composition bias or modern contamination).
@@ -144,9 +144,9 @@ A library is `damage_validated` when both Channel A and Channel B agree. If Chan
 
 Reads are binned by their interior GC content (10 bins, 0–100%). Within each bin, damage is estimated independently, enabling separation of high-damage ancient DNA from low-damage modern contamination in mixed samples. The mixture model (EM over GC bins) reports:
 
-- `mixture_pi_ancient` — fraction of C-sites in high-damage components
-- `mixture_d_ancient` — expected damage rate among ancient reads
-- `mixture_d_population` — population-average damage rate
+- `mixture_pi_ancient`: fraction of C-sites in high-damage components
+- `mixture_d_ancient`: expected damage rate among ancient reads
+- `mixture_d_population`: population-average damage rate
 
 ---
 

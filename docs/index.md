@@ -6,9 +6,9 @@
 
 ## What it does
 
-libdart-damage estimates cytosine deamination damage in ancient DNA without requiring a reference genome or read alignment. It operates directly on raw FASTQ sequences, scanning terminal positions for the hallmark C→T (5' end) and G→A (3' end) substitution patterns that accumulate over millennia.
+libdart-damage estimates cytosine deamination damage in ancient DNA without a reference genome or read alignment. It scans terminal positions of raw FASTQ sequences for C→T (5' end) and G→A (3' end) substitution patterns and fits an exponential decay model to each end.
 
-Beyond quantifying damage, it automatically classifies each library as **double-stranded (DS)** or **single-stranded (SS)** using a 4-channel joint BIC model — enabling downstream tools to apply library-appropriate deduplication and damage masking.
+It also classifies each library as **double-stranded (DS)** or **single-stranded (SS)** using a 4-channel joint BIC model, so downstream tools can apply library-appropriate deduplication and damage masking.
 
 ---
 
@@ -42,7 +42,7 @@ std::cout << "Library:    " << profile.library_type_str() << "\n";
 
 | Feature | Description |
 |---------|-------------|
-| Reference-free | Works directly on FASTQ — no BAM, no alignment |
+| Reference-free | Works directly on FASTQ, no BAM, no alignment |
 | D_max estimation | Calibrated, metaDMG-comparable damage rates |
 | Library-type detection | BIC classifier: DS / SS / UNKNOWN |
 | Multi-channel validation | 5 damage channels (A, B, B₃′, C, D) cross-validate signal |
@@ -60,7 +60,7 @@ Tested on 315 Mediterranean sediment aDNA libraries (two independent datasets):
 | Dataset 1 (91 samples) | 88 | 3 | 0 | **100%** |
 | Dataset 2 (224 samples) | 193 | 25 DS + 1 SS | 3 | **98.5%** |
 
-UNKNOWN = no detectable signal above the null model (zero-damage libraries where no library type can be inferred from sequence alone).
+UNKNOWN: no detectable signal above the null model (zero-damage libraries where no library type can be inferred from sequence alone).
 
 ---
 
