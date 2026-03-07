@@ -98,6 +98,7 @@ All fields are public. Key results after `finalize_sample_profile`:
 | `lambda_5prime` | `float` | Fitted decay constant $\lambda$ at 5' |
 | `lambda_3prime` | `float` | Fitted decay constant $\lambda$ at 3' |
 | `asymmetry` | `float` | `\|d5 - d3\| / mean(d5, d3)`, >0.5 flagged as suspicious |
+| `d_max_source_str()` | `const char*` | Source used for `d_max_combined`: `"average"`, `"5prime_only"`, `"3prime_only"`, `"channel_b_structural"`, `"channel_b3_structural"`, `"min_asymmetry"`, `"max_ss_asymmetry"`, `"none"` |
 
 ### Library-type classification
 
@@ -143,6 +144,20 @@ All arrays are 15 elements, indexed 0–14 from the read terminus.
 | `tc_total_5prime[p]` | T+C coverage at 5' position `p` |
 | `a_freq_3prime[p]` | Raw A count at 3' position `p` |
 | `ag_total_3prime[p]` | A+G coverage at 3' position `p` |
+
+### GC-stratified mixture model
+
+Available after `finalize_sample_profile`. Requires at least one GC bin with sufficient reads.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `mixture_pi_ancient` | `float` | Fraction of C-sites in high-damage components |
+| `mixture_d_ancient` | `float` | Expected damage rate among ancient reads (δ > 5%) |
+| `mixture_d_population` | `float` | Population-average damage rate across all C-sites |
+| `mixture_d_reference` | `float` | Damage rate in GC > 50% bins (metaDMG proxy) |
+| `mixture_K` | `int` | Number of mixture components selected by BIC |
+| `mixture_converged` | `bool` | Whether the EM algorithm converged |
+| `gc_stratified_valid` | `bool` | At least one GC bin has a valid estimate |
 
 ### Validation and reliability flags
 
