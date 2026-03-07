@@ -1,0 +1,977 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Reference-free ancient DNA damage estimation and library-type classification">
+      
+      
+      
+        <link rel="canonical" href="https://genomewalker.github.io/libdart-damage/methods/">
+      
+      
+        <link rel="prev" href="..">
+      
+      
+        <link rel="next" href="../api/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.4">
+    
+    
+      
+        <title>Methods - libdart-damage</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="blue">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#methods" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="libdart-damage" class="md-header__button md-logo" aria-label="libdart-damage" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            libdart-damage
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Methods
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="blue"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="blue"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/genomewalker/libdart-damage" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    genomewalker/libdart-damage
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href=".." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    <li class="md-tabs__item md-tabs__item--active">
+      <a href="./" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Methods
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../api/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  API Reference
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../changelog/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Changelog
+
+      </a>
+    </li>
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+  
+
+<nav class="md-nav md-nav--primary md-nav--lifted md-nav--integrated" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="libdart-damage" class="md-nav__button md-logo" aria-label="libdart-damage" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    libdart-damage
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/genomewalker/libdart-damage" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    genomewalker/libdart-damage
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Methods
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Methods
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#damage-model" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Damage model
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#pass-0-per-position-frequency-estimation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Pass 0: per-position frequency estimation
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#library-type-classifier" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Library-type classifier
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Library-type classifier">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#biological-basis" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Biological basis
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#four-channels-and-the-ga0-spike" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Four channels and the GA0 spike
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#bic-models" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        BIC models
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cascade" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Cascade
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#post-hoc-symmetry-check" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Post-hoc symmetry check
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rescue-rules" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Rescue rules
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#unknown-category" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        UNKNOWN category
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#multi-channel-validation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Multi-channel validation
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#gc-stratified-estimation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        GC-stratified estimation
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#d_max-combination" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        D_max combination
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../changelog/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Changelog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="methods">Methods</h1>
+<h2 id="damage-model">Damage model</h2>
+<p>Ancient DNA accumulates cytosine deamination over time. In double-stranded libraries this produces C→T substitutions at the 5' end and G→A substitutions at the 3' end (the complement of C→T on the opposite strand). The rate decays exponentially away from each terminus:</p>
+<div class="arithmatex">\[\delta(p) = b + A \cdot e^{-\lambda p}\]</div>
+<p>where <span class="arithmatex">\(p\)</span> is the distance from the read terminus (0-indexed), <span class="arithmatex">\(b\)</span> is the background (interior) substitution rate, <span class="arithmatex">\(A\)</span> is the damage amplitude, and <span class="arithmatex">\(\lambda\)</span> is the decay constant.</p>
+<p>D_max is the calibrated damage estimate at position 0:</p>
+<div class="arithmatex">\[D_{\max} = \frac{A}{1 - b}\]</div>
+<p>This matches the definition used by metaDMG and mapDamage.</p>
+<hr />
+<h2 id="pass-0-per-position-frequency-estimation">Pass 0: per-position frequency estimation</h2>
+<p>libdart-damage scans each read and accumulates base counts at the first and last 15 positions. For each position <span class="arithmatex">\(p\)</span>:</p>
+<ul>
+<li><strong>5' damage channel (ct5)</strong>: <span class="arithmatex">\(r_p = T_p / (T_p + C_p)\)</span>, excess T where C expected</li>
+<li><strong>3' damage channel (ga3)</strong>: <span class="arithmatex">\(r_p = A_p / (A_p + G_p)\)</span>, excess A where G expected</li>
+<li><strong>5' control channel</strong>: <span class="arithmatex">\(A_p / (A_p + G_p)\)</span> at 5' end, should be flat if ct5 is real</li>
+<li><strong>3' control channel (ct3)</strong>: <span class="arithmatex">\(T_p / (T_p + C_p)\)</span> at 3' end, carries SS original-orientation signal</li>
+</ul>
+<p>The middle third of each read (positions 30 to <span class="arithmatex">\(L-30\)</span>) provides the background baseline <span class="arithmatex">\(b\)</span>.</p>
+<p>WLS amplitude estimation uses the fixed decay rate <span class="arithmatex">\(\hat\lambda\)</span> estimated in Pass 0:</p>
+<div class="arithmatex">\[\hat{A} = \max\!\left(0,\; \frac{\sum_p n_p \cdot e^{-\hat\lambda p} \cdot (r_p - b)}{\sum_p n_p \cdot e^{-2\hat\lambda p}}\right)\]</div>
+<p>where <span class="arithmatex">\(n_p\)</span> is coverage (T+C count) at position <span class="arithmatex">\(p\)</span>.</p>
+<hr />
+<h2 id="library-type-classifier">Library-type classifier</h2>
+<h3 id="biological-basis">Biological basis</h3>
+<table>
+<thead>
+<tr>
+<th>Library prep</th>
+<th>Damage pattern</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Double-stranded (DS)</td>
+<td>Symmetric: ct5 ≈ ga3, both exponential decay</td>
+</tr>
+<tr>
+<td>DS + end-repair artifact</td>
+<td>As above + GA0 spike at 3' pos-0</td>
+</tr>
+<tr>
+<td>Single-stranded (SS), complement orientation</td>
+<td>GA0 spike only; no ct5, no ga3 smooth decay</td>
+</tr>
+<tr>
+<td>SS, original orientation</td>
+<td>ct5 + ct3 (C→T at both ends); no ga3</td>
+</tr>
+<tr>
+<td>SS, mixed (both orientations)</td>
+<td>ct5 + ga3 + GA0; asymmetric</td>
+</tr>
+</tbody>
+</table>
+<h3 id="four-channels-and-the-ga0-spike">Four channels and the GA0 spike</h3>
+<p>In addition to the smooth exponential channels, a single-position model fits position 0 of the 3' end (<strong>ga0</strong>). This captures:</p>
+<ul>
+<li>DS end-repair artifacts: bilateral, both 5' pos-0 CT and 3' pos-0 GA elevated</li>
+<li>SS complement-orientation reads: unilateral, 3' GA0 spike only, no 5' counterpart</li>
+</ul>
+<h3 id="bic-models">BIC models</h3>
+<p>Seven composite BIC models partition the four channels into active (alt) and inactive (null):</p>
+<table>
+<thead>
+<tr>
+<th>Model</th>
+<th>ct5</th>
+<th>ga3</th>
+<th>ga0</th>
+<th>ct3</th>
+<th>Interpretation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>M_bias</td>
+<td>null</td>
+<td>null</td>
+<td>null</td>
+<td>null</td>
+<td>No signal</td>
+</tr>
+<tr>
+<td>M_DS_symm</td>
+<td>joint↑</td>
+<td>joint↑</td>
+<td>null</td>
+<td>null</td>
+<td>DS symmetric deamination</td>
+</tr>
+<tr>
+<td>M_DS_spike</td>
+<td>null</td>
+<td>null</td>
+<td>alt</td>
+<td>null</td>
+<td>DS end-repair artifact only</td>
+</tr>
+<tr>
+<td>M_DS_symm_art</td>
+<td>joint↑</td>
+<td>joint↑</td>
+<td>alt</td>
+<td>null</td>
+<td>DS deamination + end-repair</td>
+</tr>
+<tr>
+<td>M_SS_comp</td>
+<td>null</td>
+<td>alt</td>
+<td>alt</td>
+<td>null</td>
+<td>SS complement-orientation only</td>
+</tr>
+<tr>
+<td>M_SS_orig</td>
+<td>alt</td>
+<td>null</td>
+<td>null</td>
+<td>alt</td>
+<td>SS original-orientation only</td>
+</tr>
+<tr>
+<td>M_SS_asym</td>
+<td>alt</td>
+<td>null</td>
+<td>alt</td>
+<td>null</td>
+<td>SS both orientations, no smooth ga3</td>
+</tr>
+</tbody>
+</table>
+<p>↑ <code>joint</code> = ct5 and ga3 share one amplitude parameter (M_DS_symm constraint). This is 1 free parameter for 2 channels; if ct5 ≠ ga3, the joint fit is penalised and a pure SS model wins.</p>
+<p>Each composite BIC is the sum of component BICs:</p>
+<div class="arithmatex">\[\text{BIC}(M) = \sum_{\text{channels}} \text{BIC}_{\text{component}}(\text{channel}, \text{active/null})\]</div>
+<p>Lower BIC wins. The null model has 0 free parameters; each active channel contributes 1 free parameter (amplitude) with penalty <span class="arithmatex">\(\ln(n_{\text{trials}})\)</span>.</p>
+<h3 id="cascade">Cascade</h3>
+<p>The classifier runs a waterfall over models in this order:</p>
+<ol>
+<li>Start: <code>best = BIC(M_bias)</code>, type = DS</li>
+<li>M_DS_symm — DS</li>
+<li>M_DS_spike (only when <code>spike_is_ss = false</code>) — DS</li>
+<li>M_DS_symm_art — DS</li>
+<li>M_SS_comp — SS</li>
+<li>M_SS_orig (only when ct3 ΔBIC &gt; 0) — SS</li>
+<li>M_DS_spike as SS (only when <code>spike_is_ss = true</code>) — SS</li>
+<li>M_SS_asym (only when <code>spike_is_ss = true</code>) — SS</li>
+</ol>
+<p><code>spike_is_ss = (ga0.amplitude ≥ 0.10)</code>: a GA0 spike above 10% amplitude is too large to be a DS end-repair artifact and enters the SS model set.</p>
+<h3 id="post-hoc-symmetry-check">Post-hoc symmetry check</h3>
+<p>If DS wins but the ct5/ga3 amplitude ratio is highly asymmetric, the DS symmetry assumption is violated:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>if DS wins AND ga3.ΔBIC &gt; 30,000 AND ct5.ΔBIC / ga3.ΔBIC &lt; 0.50 → SS
+</code></pre></div>
+<p>Applied when SS libraries have original-orientation reads dominating ct5 and complement reads dominating ga3, creating apparent asymmetry that breaks M_DS_symm.</p>
+<h3 id="rescue-rules">Rescue rules</h3>
+<p><strong>M_DS_spike rescue</strong> (for <code>spike_is_ss = false</code>): when M_DS_spike won but d5 ≈ 0, the pos-0 spike is unilateral (complement-orientation SS), not bilateral DS end-repair:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>if DS wins AND ds_spike_won AND ct5.ΔBIC ≤ 0 AND ga3.ΔBIC ≤ 0
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>   AND ga0.ΔBIC &gt; 0 AND ga0.amplitude &gt; 0.02 AND d5 ≤ 0.005 → SS
+</code></pre></div>
+<p><strong>GA0 bilateral rescue</strong> (for <code>spike_is_ss = true</code>): when a large GA0 spike (≥ 0.10) drives M_DS_symm_art to win, d5 discriminates DS bilateral from SS complement-only:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>if DS wins AND spike_is_ss AND ga0.ΔBIC &gt; 0 AND d5 ≤ 0.005 → SS
+</code></pre></div>
+<p>Validated on 24 DS controls with ga0_amp ≥ 0.10: all have d5 ≥ 0.11. All SS mixed failures with ga0_amp ≥ 0.10 have d5 = 0.00. The gap is &gt;20× the threshold.</p>
+<h3 id="unknown-category">UNKNOWN category</h3>
+<p>If no model beats M_bias (<code>best == BIC(M_bias)</code> exactly), the library has no detectable damage in any channel. The result is <code>UNKNOWN</code> rather than a default DS call. The caller should use <code>--library-type ds</code> or provide metadata.</p>
+<hr />
+<h2 id="multi-channel-validation">Multi-channel validation</h2>
+<p>libdart-damage uses five independent damage channels to cross-validate the C→T signal:</p>
+<table>
+<thead>
+<tr>
+<th>Channel</th>
+<th>Signal</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>A</td>
+<td>C→T rate per position</td>
+<td>Primary deamination channel</td>
+</tr>
+<tr>
+<td>B</td>
+<td>Stop codon conversion (CAA/CAG/CGA → TAA/TAG/TGA) at 5'</td>
+<td>Sequence-composition-independent</td>
+</tr>
+<tr>
+<td>B₃′</td>
+<td>Stop codon conversion via G→A at 3' (TGG → TAG/TGA)</td>
+<td>Validates SS 3' damage</td>
+</tr>
+<tr>
+<td>C</td>
+<td>G→T transversions (8-oxoG)</td>
+<td>Uniform across read, composition artifact flag</td>
+</tr>
+<tr>
+<td>D</td>
+<td>G→T / C→A transversions (oxidative)</td>
+<td>Uniform signal distinguishes from deamination</td>
+</tr>
+</tbody>
+</table>
+<p>A library is <code>damage_validated</code> when both Channel A and Channel B agree. If Channel A fires but Channel B contradicts it, <code>damage_artifact = true</code> (likely composition bias or modern contamination).</p>
+<hr />
+<h2 id="gc-stratified-estimation">GC-stratified estimation</h2>
+<p>Reads are binned by their interior GC content (10 bins, 0–100%). Within each bin, damage is estimated independently, enabling separation of high-damage ancient DNA from low-damage modern contamination in mixed samples. The mixture model (EM over GC bins) reports:</p>
+<ul>
+<li><code>mixture_pi_ancient</code>: fraction of C-sites in high-damage components</li>
+<li><code>mixture_d_ancient</code>: expected damage rate among ancient reads</li>
+<li><code>mixture_d_population</code>: population-average damage rate</li>
+</ul>
+<hr />
+<h2 id="d_max-combination">D_max combination</h2>
+<p>The final <code>d_max_combined</code> is selected asymmetry-aware:</p>
+<table>
+<thead>
+<tr>
+<th>Condition</th>
+<th>Strategy</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Both ends valid, low asymmetry</td>
+<td>Average of d5 and d3</td>
+</tr>
+<tr>
+<td>High asymmetry (SS mixed)</td>
+<td>Use whichever end is more reliable</td>
+</tr>
+<tr>
+<td>Only one end valid</td>
+<td>Use that end alone</td>
+</tr>
+<tr>
+<td>Channel B₃′ available</td>
+<td>Structural estimate from stop codon decay</td>
+</tr>
+</tbody>
+</table>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.tabs", "navigation.sections", "navigation.top", "content.code.copy", "toc.integrate"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+        <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+      
+        <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+      
+    
+  </body>
+</html>
