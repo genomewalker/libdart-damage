@@ -1631,14 +1631,21 @@ void FrameSelector::finalize_sample_profile(SampleDamageProfile& profile) {
             const double bic_M_SS_comp     = ct5.bic_null   + ga3.bic_alt  + ga0.bic_alt  + ct3.bic_null;
             const double bic_M_SS_orig     = ct5.bic_alt    + ga3.bic_null + ga0.bic_null + ct3.bic_alt;
             const double bic_M_SS_full     = ct5.bic_alt    + ga3.bic_alt  + ga0.bic_alt  + ct3.bic_alt;
+            // SS asymmetric: original-orientation CT5 + complement-orientation GA0 spike; no GA3 smooth decay.
+            // Wins over M_DS_symm_art when ga3.delta_bic < log(2), i.e. ga3 has no real signal.
+            // Only considered when spike_is_ss=true so it cannot compete with M_DS_spike in the DS-only path.
+            const double bic_M_SS_asym     = ct5.bic_alt    + ga3.bic_null + ga0.bic_alt  + ct3.bic_null;
 
             // ga0 amplitude distinguishes DS end-repair artifact (<0.10) from SS ligation spike (>=0.10)
             const bool spike_is_ss = (ga0.amplitude >= 0.10f);
             const double best_ds = std::min({bic_M_DS_symm, bic_M_DS_symm_art,
                                              spike_is_ss ? 1e300 : bic_M_DS_spike});
-            // M_SS_full excluded: 4-param model unfairly defeats M_DS_symm_art for asymmetric DS
+            // M_SS_full excluded: 4-param model unfairly defeats M_DS_symm_art for asymmetric DS.
+            // M_SS_asym only enters the SS set when spike_is_ss, preventing competition with M_DS_spike
+            // in non-spike samples (which would misclassify one-sided DS libraries).
             const double best_ss = std::min({bic_M_SS_comp, bic_M_SS_orig,
-                                             spike_is_ss ? bic_M_DS_spike : 1e300});
+                                             spike_is_ss ? bic_M_DS_spike : 1e300,
+                                             spike_is_ss ? bic_M_SS_asym  : 1e300});
             profile.library_bic_bias = bic_M_bias;
             profile.library_bic_ds   = best_ds;
             profile.library_bic_ss   = best_ss;
@@ -1663,18 +1670,28 @@ void FrameSelector::finalize_sample_profile(SampleDamageProfile& profile) {
                 best = bic_M_SS_comp;
                 profile.library_type = SampleDamageProfile::LibraryType::SINGLE_STRANDED;
             }
-            if (bic_M_SS_orig < best) {
+            // M_SS_orig requires ct3 signal: SS original-orientation reads produce CT3 whenever
+            // they produce CT5. Without CT3, a one-sided DS pattern is more likely.
+            if (bic_M_SS_orig < best && ct3.delta_bic > 0.0) {
                 best = bic_M_SS_orig;
                 profile.library_type = SampleDamageProfile::LibraryType::SINGLE_STRANDED;
             }
             if (spike_is_ss && bic_M_DS_spike < best) {
                 profile.library_type = SampleDamageProfile::LibraryType::SINGLE_STRANDED;
             }
+            // M_SS_asym: SS with CT5 from original-orientation + GA0 spike from complement-orientation,
+            // but no detectable GA3 smooth decay (ga3.delta_bic ≈ 0). Analytically beats M_DS_symm_art
+            // iff ga3.delta_bic < log(2) ≈ 0.693, which is the gap the joint-fit BIC penalty creates.
+            if (spike_is_ss && bic_M_SS_asym < best) {
+                best = bic_M_SS_asym;
+                profile.library_type = SampleDamageProfile::LibraryType::SINGLE_STRANDED;
+            }
             // Post-hoc symmetry check: DS_symm constrains ct5_amp ≈ ga3_amp.
-            // If DS wins but CT5 ΔBIC / GA3 ΔBIC < 0.50, the winning model's
-            // own symmetry assumption is violated → reclassify as SS (SS_mixed).
+            // If DS wins but CT5 ΔBIC / GA3 ΔBIC < 0.50, the winning model's own symmetry
+            // assumption is violated → reclassify as SS. Guard ga3.delta_bic > 3e4 to avoid
+            // misfiring on low-damage DS libraries where small asymmetry is noise.
             if (profile.library_type == SampleDamageProfile::LibraryType::DOUBLE_STRANDED &&
-                ga3.delta_bic > 0.0 &&
+                ga3.delta_bic > 3e4 &&
                 ct5.delta_bic / ga3.delta_bic < 0.50) {
                 profile.library_type = SampleDamageProfile::LibraryType::SINGLE_STRANDED;
             }
