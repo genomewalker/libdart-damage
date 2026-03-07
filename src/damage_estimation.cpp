@@ -1695,6 +1695,22 @@ void FrameSelector::finalize_sample_profile(SampleDamageProfile& profile) {
                 ct5.delta_bic / ga3.delta_bic < 0.50) {
                 profile.library_type = SampleDamageProfile::LibraryType::SINGLE_STRANDED;
             }
+            // M_DS_spike rescue: a GA0 pos-0 spike with no CT5 and no GA3 smooth decay could be
+            // M_DS_spike (DS end-repair, bilateral: both 5' pos0 and 3' pos0 elevated) or
+            // complement-orientation SS (3' GA0 spike only, no 5' pos-0 counterpart).
+            // Discriminate with max_damage_5prime (background-corrected excess CT at 5' pos-0).
+            // Requires ga0.amplitude > 0.02 to exclude near-zero noise spikes (e.g. tiny end-repair
+            // artifacts with ga0_amp ≈ 0.001 that also have negligible d_max_5 ≈ 0.005).
+            // DS bilateral artifacts have d_max_5 ≈ ga0_amp >> 0.005; SS complement-only has d_max_5 ≈ 0.
+            if (profile.library_type == SampleDamageProfile::LibraryType::DOUBLE_STRANDED &&
+                !spike_is_ss &&
+                ct5.delta_bic <= 0.0 &&
+                ga3.delta_bic <= 0.0 &&
+                ga0.delta_bic > 0.0 &&
+                ga0.amplitude > 0.02f &&
+                profile.max_damage_5prime <= 0.005f) {
+                profile.library_type = SampleDamageProfile::LibraryType::SINGLE_STRANDED;
+            }
         } else {
             profile.library_bic_bias = 0.0;
             profile.library_bic_ds   = 0.0;
