@@ -225,6 +225,91 @@ static ChannelDecayFit fit_decay_fixed_lambda(
     return fit;
 }
 
+// Joint two-channel WLS amplitude fit: ct5 + ga3 share ONE amplitude parameter.
+// Biologically, DS deamination produces ct5 ≈ ga3 (same exponential decay, symmetric).
+// When ct5 << ga3 (SS_comp: complement-orientation reads only, residual original reads),
+// A_joint is a poor compromise for both channels → LL(A_joint) < LL_null for ct5 and
+// < LL_alt_optimal for ga3 → combined BIC_alt exceeds independent fits → M_DS_symm rejected.
+//
+// Returns ChannelDecayFit where:
+//   amplitude = A_joint (single value fit to both channels simultaneously)
+//   bic_alt   = -2*LL_joint(A_joint) + log(n1+n2)   [1 free parameter for both channels]
+//   bic_null  = ch1.bic_null + ch2.bic_null          [= -2*LL_joint(0)]
+//   delta_bic = bic_null - bic_alt
+// valid iff both channels separately had >= min_valid positions with coverage >= 100.
+static ChannelDecayFit fit_decay_fixed_lambda_joint(
+        const std::array<double, 15>& freq1,
+        const std::array<double, 15>& cov1,
+        float baseline1,
+        const std::array<double, 15>& freq2,
+        const std::array<double, 15>& cov2,
+        float baseline2,
+        float lambda,
+        int start_pos = 1,
+        int end_pos   = 10,
+        int min_valid = 3) {
+
+    ChannelDecayFit fit;
+    fit.baseline = std::clamp(baseline1, 0.001f, 0.999f);
+    fit.lambda   = std::clamp(lambda, 0.05f, 0.50f);
+
+    // WLS joint amplitude summed over both channels
+    double numer = 0.0, denom = 0.0;
+    int n_valid1 = 0, n_valid2 = 0;
+    for (int p = start_pos; p <= end_pos && p < 15; ++p) {
+        double x = std::exp(-fit.lambda * p);
+        double n1 = cov1[p];
+        if (n1 >= 100.0) {
+            numer += n1 * x * (freq1[p] - baseline1);
+            denom += n1 * x * x;
+            fit.n_trials += static_cast<uint64_t>(n1);
+            ++n_valid1;
+        }
+        double n2 = cov2[p];
+        if (n2 >= 100.0) {
+            numer += n2 * x * (freq2[p] - baseline2);
+            denom += n2 * x * x;
+            fit.n_trials += static_cast<uint64_t>(n2);
+            ++n_valid2;
+        }
+    }
+    if (n_valid1 < min_valid || n_valid2 < min_valid || denom <= 0.0 || fit.n_trials == 0) return fit;
+
+    double max_base = std::max(static_cast<double>(baseline1), static_cast<double>(baseline2));
+    fit.amplitude = std::clamp(static_cast<float>(numer / denom),
+                               0.0f, static_cast<float>(1.0 - max_base - 0.001));
+    double A = fit.amplitude;
+
+    // Joint log-likelihoods at A_joint and at null (A=0) for both channels
+    for (int p = start_pos; p <= end_pos && p < 15; ++p) {
+        double x = std::exp(-fit.lambda * p);
+        double n1 = cov1[p];
+        if (n1 >= 100.0) {
+            double k1    = freq1[p] * n1;
+            double p_alt = std::clamp(baseline1 + A * x, 0.001, 0.999);
+            double p_null = std::clamp(static_cast<double>(baseline1), 0.001, 0.999);
+            fit.log_lik_alt  += binomial_ll(k1, n1, p_alt);
+            fit.log_lik_null += binomial_ll(k1, n1, p_null);
+        }
+        double n2 = cov2[p];
+        if (n2 >= 100.0) {
+            double k2    = freq2[p] * n2;
+            double p_alt = std::clamp(baseline2 + A * x, 0.001, 0.999);
+            double p_null = std::clamp(static_cast<double>(baseline2), 0.001, 0.999);
+            fit.log_lik_alt  += binomial_ll(k2, n2, p_alt);
+            fit.log_lik_null += binomial_ll(k2, n2, p_null);
+        }
+    }
+
+    // BIC: 1 free parameter (shared amplitude); n = n1 + n2 combined
+    double log_n = std::log(static_cast<double>(fit.n_trials));
+    fit.bic_alt   = -2.0 * fit.log_lik_alt  + log_n;
+    fit.bic_null  = -2.0 * fit.log_lik_null;
+    fit.delta_bic = fit.bic_null - fit.bic_alt;
+    fit.valid = true;
+    return fit;
+}
+
 void FrameSelector::update_sample_profile(
     SampleDamageProfile& profile,
     const std::string& seq) {
@@ -1479,98 +1564,112 @@ void FrameSelector::finalize_sample_profile(SampleDamageProfile& profile) {
     } else {
         float lambda_lib = std::clamp(fit_lambda_5p, 0.05f, 0.50f);
 
-        // ga3: A/(A+G) at 3' of read, positions 1-10 — smooth exponential decay (DS signal).
-        //   For DS (BEST, top-strand read): bottom strand 3' C→T → G→A at read 3' pos 1-10.
-        //   For SS (SCR, complement-strand read): biological 5' C→T → G→A at read 3' pos 1-10.
-        //   Both library types can show ga3 signal; it is NOT the discriminating feature alone.
+        // Four channels, all with lambda fixed to the fitted 5' C→T decay rate.
         //
-        // ga0: A/(A+G) at 3' of read, position 0 only — single-position spike (SS signal).
-        //   For SS (SCR complement strand): biological 5' C→T → complement G→A at read 3' pos-0.
-        //     Observed: 3'_GA pos-0 ≈ 0.73 in SS environmental samples (far above baseline 0.46).
-        //   For DS (BEST): 3' ligation chemistry DEPRESSES A at pos-0 (3'_GA pos-0 ≈ 0.36 < baseline).
-        //     pos-0 spike is absent or negative → ga0_delta_bic ≤ 0.
+        // ct5: T/(T+C) at 5' pos 1-10  — 5' C→T damage (DS reads and SS-original reads).
+        // ga3: A/(A+G) at 3' pos 1-10  — smooth 3' G→A decay (DS reads and SS-complement reads).
+        // ga0: A/(A+G) at 3' pos 0     — pos-0 G→A spike (SS-complement ligation artifact).
+        // ct3: T/(T+C) at 3' pos 1-10  — 3' C→T (SS-original reads only; absent in DS).
         //
-        // 4-model BIC on the 3' GA channel:
-        //   M_bias = ga3_null + ga0_null   (no decay, no spike)
-        //   M_DS   = ga3_alt  + ga0_null   (smooth decay at pos 1-10, no pos-0 spike)
-        //   M_SS   = ga3_null + ga0_alt    (spike at pos-0, no smooth decay)
-        //   M_mix  = ga3_alt  + ga0_alt    (spike + decay; environmental SS + composition bias → SS)
+        // Seven competing joint models:
+        //
+        //   M_bias         = ct5_null + ga3_null  + ga0_null + ct3_null  (no damage anywhere)
+        //   M_DS_symm      = ds_symm  + ga0_null  + ct3_null  (DS: ct5+ga3 joint fit, symmetric decay)
+        //   M_DS_spike     = ct5_null + ga3_null  + ga0_alt  + ct3_null  (DS: only pos-0 end-repair spike)
+        //   M_DS_symm_art  = ds_symm  + ga0_alt   + ct3_null  (DS: symmetric decay + pos-0 artifact)
+        //   M_SS_comp      = ct5_null + ga3_alt   + ga0_alt  + ct3_null  (SS complement-orientation reads)
+        //   M_SS_orig      = ct5_alt  + ga3_null  + ga0_null + ct3_alt   (SS original-orientation reads)
+        //   M_SS_full      = ct5_alt  + ga3_alt   + ga0_alt  + ct3_alt   (SS both orientations)
+        //
+        // M_DS_symm, M_DS_spike, M_DS_symm_art classify as DS; M_SS_* as SS.
+        //
+        // M_DS_symm: ct5 and ga3 are jointly fitted with a SINGLE shared amplitude. For genuine DS,
+        // ct5 ≈ ga3 and A_joint is near-optimal for both → low BIC. For SS_comp (ct5 << ga3), A_joint
+        // is too high for ct5 (over-predicts → LL_ct5 < LL_null) and too low for ga3 → combined BIC
+        // exceeds M_SS_comp → M_DS_symm rejected. This replaces the earlier threshold-based approach.
+        //
+        // M_DS_spike covers DS libraries with composition bias at 5' where positions 1-10 show no
+        // usable ct5/ga3 signal (amplitudes clamped to 0), yet a genuine chemical pos-0 signal exists
+        // from end-repair. Without M_DS_spike, M_SS_comp would win for such samples.
+        //
+        // Joint BIC = sum of per-channel BICs (bic_alt for alt channels, bic_null for null).
+        // M_DS_symm uses 1 free parameter for both ct5+ga3; all other models use per-channel params.
+        // Winner = lowest joint BIC. No post-hoc thresholds.
+        ChannelDecayFit ct5 = fit_decay_fixed_lambda(
+            profile.t_freq_5prime, profile.tc_total_5prime,
+            static_cast<float>(baseline_tc), lambda_lib, 1, 10);
         ChannelDecayFit ga3 = fit_decay_fixed_lambda(
             profile.a_freq_3prime, profile.ag_total_3prime,
             static_cast<float>(baseline_ag), lambda_lib, 1, 10);
-        // ga0: single-position test at 3' pos-0 (SS spike signal); min_valid=1 to allow 1-point fit
+        // ga0: single-position fit at 3' pos-0; min_valid=1 to allow 1-point fit
         ChannelDecayFit ga0 = fit_decay_fixed_lambda(
             profile.a_freq_3prime, profile.ag_total_3prime,
             static_cast<float>(baseline_ag), lambda_lib, 0, 0, 1);
+        ChannelDecayFit ct3 = fit_decay_fixed_lambda(
+            ctrl_freq_3p, ctrl_total_3p,
+            static_cast<float>(baseline_tc), lambda_lib, 1, 10);
+        // Symmetric DS model: ct5 and ga3 jointly fitted with one shared amplitude
+        ChannelDecayFit ds_symm = fit_decay_fixed_lambda_joint(
+            profile.t_freq_5prime, profile.tc_total_5prime, static_cast<float>(baseline_tc),
+            profile.a_freq_3prime, profile.ag_total_3prime, static_cast<float>(baseline_ag),
+            lambda_lib, 1, 10);
 
-        profile.libtype_fit_amplitude_3prime_ga = ga3.amplitude;
-        profile.libtype_fit_amplitude_3prime_ct = ga0.amplitude;  // repurposed: pos-0 spike amplitude
-        profile.libtype_delta_bic_3prime_ga     = ga3.delta_bic;
-        profile.libtype_delta_bic_3prime_ct     = ga0.delta_bic;  // repurposed: pos-0 spike ΔBIC
+        profile.libtype_amp_ct5  = ct5.amplitude;
+        profile.libtype_amp_ga3  = ga3.amplitude;
+        profile.libtype_amp_ga0  = ga0.amplitude;
+        profile.libtype_amp_ct3  = ct3.amplitude;
+        profile.libtype_dbic_ct5 = ct5.delta_bic;
+        profile.libtype_dbic_ga3 = ga3.delta_bic;
+        profile.libtype_dbic_ga0 = ga0.delta_bic;
+        profile.libtype_dbic_ct3 = ct3.delta_bic;
 
-        if (ga3.valid && ga0.valid) {
-            // True BIC scores (stored for diagnostics/logging).
-            profile.library_bic_bias = ga3.bic_null + ga0.bic_null;
-            profile.library_bic_ds   = ga3.bic_alt  + ga0.bic_null;  // smooth decay, no spike
-            profile.library_bic_ss   = ga3.bic_null + ga0.bic_alt;   // spike only, no decay
-            profile.library_bic_mix  = ga3.bic_alt  + ga0.bic_alt;   // spike + decay
+        if (ct5.valid && ga3.valid && ga0.valid && ct3.valid && ds_symm.valid) {
+            const double bic_M_bias        = ct5.bic_null   + ga3.bic_null + ga0.bic_null + ct3.bic_null;
+            const double bic_M_DS_symm     = ds_symm.bic_alt               + ga0.bic_null + ct3.bic_null;
+            const double bic_M_DS_spike    = ct5.bic_null   + ga3.bic_null + ga0.bic_alt  + ct3.bic_null;
+            const double bic_M_DS_symm_art = ds_symm.bic_alt               + ga0.bic_alt  + ct3.bic_null;
+            const double bic_M_SS_comp     = ct5.bic_null   + ga3.bic_alt  + ga0.bic_alt  + ct3.bic_null;
+            const double bic_M_SS_orig     = ct5.bic_alt    + ga3.bic_null + ga0.bic_null + ct3.bic_alt;
+            const double bic_M_SS_full     = ct5.bic_alt    + ga3.bic_alt  + ga0.bic_alt  + ct3.bic_alt;
 
-            // Guard against BIC hypersensitivity at high n and spurious 3' pos-0 spikes in
-            // DS libraries: require a meaningful spike amplitude before ga0 can influence
-            // classification. Amplitude is scale-independent unlike ΔBIC/n (which depends on
-            // coverage at pos-0, not total reads). Empirical gap on 91 clay-test samples:
-            //   DS FP max amplitude = 0.089 (LV7008888557, end-repair artifact)
-            //   SS correct minimum  = 0.125 (LV7008890981)
-            // Threshold 0.10 sits cleanly in the gap; amplitude < 0.10 collapses SS → bias
-            // and mix → DS.
-            const bool ga0_informative = (ga0.amplitude >= 0.10f);
+            const double best_ds = std::min({bic_M_DS_symm, bic_M_DS_spike, bic_M_DS_symm_art});
+            const double best_ss = std::min({bic_M_SS_comp, bic_M_SS_orig, bic_M_SS_full});
+            profile.library_bic_bias = bic_M_bias;
+            profile.library_bic_ds   = best_ds;
+            profile.library_bic_ss   = best_ss;
+            profile.library_bic_mix  = bic_M_SS_full;
 
-            const float eff_bic_bias = profile.library_bic_bias;
-            const float eff_bic_ds   = profile.library_bic_ds;
-            const float eff_bic_ss   = ga0_informative ? profile.library_bic_ss : profile.library_bic_bias;
-            const float eff_bic_mix  = ga0_informative ? profile.library_bic_mix : profile.library_bic_ds;
-
-            double best = eff_bic_bias;
+            double best = bic_M_bias;
             profile.library_type = SampleDamageProfile::LibraryType::DOUBLE_STRANDED;
 
-            if (eff_bic_ds < best) {
-                best = eff_bic_ds;
-                // M_DS: smooth 3' G→A decay but no pos-0 spike (or spike below amplitude gate).
-                // A genuine DS library producing smooth 3' decay must also show 5' C→T (same
-                // deamination process). If d_max_5 < 0.01, the smooth 3' decay comes from
-                // complement-orientation SS reads — call SS.
-                profile.library_type = (profile.max_damage_5prime < 0.01f)
-                    ? SampleDamageProfile::LibraryType::SINGLE_STRANDED
-                    : SampleDamageProfile::LibraryType::DOUBLE_STRANDED;
+            if (bic_M_DS_symm < best) {
+                best = bic_M_DS_symm;
+                profile.library_type = SampleDamageProfile::LibraryType::DOUBLE_STRANDED;
             }
-            if (eff_bic_ss < best) {
-                best = eff_bic_ss;
+            if (bic_M_DS_spike < best) {
+                best = bic_M_DS_spike;
+                profile.library_type = SampleDamageProfile::LibraryType::DOUBLE_STRANDED;
+            }
+            if (bic_M_DS_symm_art < best) {
+                best = bic_M_DS_symm_art;
+                profile.library_type = SampleDamageProfile::LibraryType::DOUBLE_STRANDED;
+            }
+            if (bic_M_SS_comp < best) {
+                best = bic_M_SS_comp;
                 profile.library_type = SampleDamageProfile::LibraryType::SINGLE_STRANDED;
             }
-            if (eff_bic_mix < best) {
-                // M_mix: pos-0 spike (ga0_informative) and smooth 1-10 decay (ga3) are both
-                // significant. Two principled rules discriminate DS from SS:
-                //
-                //   Rule 1 (no 5' damage): d_max_5 < 0.01 → SS.
-                //     DS deamination always produces 5' C→T. Absent 5' signal means the library
-                //     is SS (complement-orientation reads dominate; C→T is at their 3' end, not 5').
-                //
-                //   Rule 2 (has 5' damage): ctrl_shift_3prime ≥ 0.05 → SS, else DS.
-                //     ctrl_shift = T/(T+C) excess at 3' (C→T channel). SS original-orientation
-                //     reads contribute strong 3' C→T (shift = 0.112–0.188 in 91 clay samples).
-                //     DS libraries have ctrl_shift ≤ 0.014 — well below the threshold.
-                //
-                // Validated on 91 clay-test samples (46 DS + 45 SS):
-                //   DS M_mix FPs: d5=0.19–0.43, ctrl_shift=0.001–0.014 → DS ✓ (Rule 2)
-                //   SS M_mix FNs: d5=0.000                             → SS ✓ (Rule 1)
-                //   SS corrects (d5>0): ctrl_shift=0.112–0.188         → SS ✓ (Rule 2)
-                const bool no_5p_damage   = (profile.max_damage_5prime < 0.01f);
-                const bool ss_ctrl_signal = (profile.ctrl_shift_3prime >= 0.05f);
-                profile.library_type = (no_5p_damage || ss_ctrl_signal)
-                    ? SampleDamageProfile::LibraryType::SINGLE_STRANDED
-                    : SampleDamageProfile::LibraryType::DOUBLE_STRANDED;
+            if (bic_M_SS_orig < best) {
+                best = bic_M_SS_orig;
+                profile.library_type = SampleDamageProfile::LibraryType::SINGLE_STRANDED;
+            }
+            if (bic_M_SS_full < best) {
+                profile.library_type = SampleDamageProfile::LibraryType::SINGLE_STRANDED;
             }
         } else {
+            profile.library_bic_bias = 0.0;
+            profile.library_bic_ds   = 0.0;
+            profile.library_bic_ss   = 0.0;
+            profile.library_bic_mix  = 0.0;
             profile.library_type = SampleDamageProfile::LibraryType::UNKNOWN;
         }
         profile.library_type_auto_detected = true;

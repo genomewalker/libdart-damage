@@ -109,17 +109,21 @@ struct SampleDamageProfile {
     // tc_total_3prime[p] = T+C count at position p from 3' (coverage gate for fqdup masking).
     std::array<double, 15> tc_total_3prime = {};
 
-    // Library-type BIC diagnostics from fixed-lambda 3' decay fits over positions 1-10.
-    // GA = A/(A+G) channel (DS signal), CT = T/(T+C) channel (SS signal).
-    // Stored as double: BIC values reach ~1e9 at high coverage, exceeding float precision.
-    float  libtype_fit_amplitude_3prime_ga = 0.0f;
-    float  libtype_fit_amplitude_3prime_ct = 0.0f;
-    double libtype_delta_bic_3prime_ga = 0.0;  // positive = decay model fits better than flat
-    double libtype_delta_bic_3prime_ct = 0.0;
-    double library_bic_bias = 0.0;  // M_bias: no 3' decay in either channel
-    double library_bic_ds   = 0.0;  // M_DS:   G→A decay only
-    double library_bic_ss   = 0.0;  // M_SS:   C→T decay only
-    double library_bic_mix  = 0.0;  // M_mix:  both channels show decay
+    // Library-type classifier: 4-channel joint BIC.
+    // Channels: ct5 = 5' C→T, ga3 = 3' G→A smooth, ga0 = 3' G→A pos-0 spike, ct3 = 3' C→T.
+    // BIC stored as double: values reach ~1e9 at high coverage, exceeding float precision.
+    float  libtype_amp_ct5  = 0.0f;   // 5' C→T fitted amplitude
+    float  libtype_amp_ga3  = 0.0f;   // 3' G→A smooth decay amplitude (pos 1-10)
+    float  libtype_amp_ga0  = 0.0f;   // 3' G→A pos-0 spike amplitude
+    float  libtype_amp_ct3  = 0.0f;   // 3' C→T fitted amplitude
+    double libtype_dbic_ct5 = 0.0;    // ΔBIC ct5  (positive = decay favoured over flat)
+    double libtype_dbic_ga3 = 0.0;
+    double libtype_dbic_ga0 = 0.0;
+    double libtype_dbic_ct3 = 0.0;
+    double library_bic_bias = 0.0;  // M_bias:   ct5=null, ga3=null, ga0=null, ct3=null
+    double library_bic_ds   = 0.0;  // M_DS:     ct5=alt,  ga3=alt,  ga0=null, ct3=null
+    double library_bic_ss   = 0.0;  // best SS model BIC (min of SS_comp, SS_orig, SS_full)
+    double library_bic_mix  = 0.0;  // M_SS_full: ct5=alt, ga3=alt, ga0=alt,  ct3=alt
 
     // Library type detection
     enum class LibraryType { UNKNOWN, DOUBLE_STRANDED, SINGLE_STRANDED };
