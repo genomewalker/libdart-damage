@@ -1632,8 +1632,13 @@ void FrameSelector::finalize_sample_profile(SampleDamageProfile& profile) {
             const double bic_M_SS_orig     = ct5.bic_alt    + ga3.bic_null + ga0.bic_null + ct3.bic_alt;
             const double bic_M_SS_full     = ct5.bic_alt    + ga3.bic_alt  + ga0.bic_alt  + ct3.bic_alt;
 
-            const double best_ds = std::min({bic_M_DS_symm, bic_M_DS_spike, bic_M_DS_symm_art});
-            const double best_ss = std::min({bic_M_SS_comp, bic_M_SS_orig, bic_M_SS_full});
+            // ga0 amplitude distinguishes DS end-repair artifact (<0.10) from SS ligation spike (>=0.10)
+            const bool spike_is_ss = (ga0.amplitude >= 0.10f);
+            const double best_ds = std::min({bic_M_DS_symm, bic_M_DS_symm_art,
+                                             spike_is_ss ? 1e300 : bic_M_DS_spike});
+            // M_SS_full excluded: 4-param model unfairly defeats M_DS_symm_art for asymmetric DS
+            const double best_ss = std::min({bic_M_SS_comp, bic_M_SS_orig,
+                                             spike_is_ss ? bic_M_DS_spike : 1e300});
             profile.library_bic_bias = bic_M_bias;
             profile.library_bic_ds   = best_ds;
             profile.library_bic_ss   = best_ss;
@@ -1646,7 +1651,7 @@ void FrameSelector::finalize_sample_profile(SampleDamageProfile& profile) {
                 best = bic_M_DS_symm;
                 profile.library_type = SampleDamageProfile::LibraryType::DOUBLE_STRANDED;
             }
-            if (bic_M_DS_spike < best) {
+            if (!spike_is_ss && bic_M_DS_spike < best) {
                 best = bic_M_DS_spike;
                 profile.library_type = SampleDamageProfile::LibraryType::DOUBLE_STRANDED;
             }
@@ -1662,7 +1667,7 @@ void FrameSelector::finalize_sample_profile(SampleDamageProfile& profile) {
                 best = bic_M_SS_orig;
                 profile.library_type = SampleDamageProfile::LibraryType::SINGLE_STRANDED;
             }
-            if (bic_M_SS_full < best) {
+            if (spike_is_ss && bic_M_DS_spike < best) {
                 profile.library_type = SampleDamageProfile::LibraryType::SINGLE_STRANDED;
             }
         } else {
