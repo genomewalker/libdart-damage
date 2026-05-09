@@ -1,0 +1,2 @@
+/maps/projects/fernandezguerra/apps/opt/conda/envs/bioinfo/bin/x86_64-conda-linux-gnu-ar qc libtaph.a CMakeFiles/taph.dir/src/damage_estimation.cpp.o CMakeFiles/taph.dir/src/damage_c_api.cpp.o CMakeFiles/taph.dir/src/length_stratified_profile.cpp.o CMakeFiles/taph.dir/src/log_length_gmm.cpp.o CMakeFiles/taph.dir/src/library_interpretation.cpp.o
+/maps/projects/fernandezguerra/apps/opt/conda/envs/bioinfo/bin/x86_64-conda-linux-gnu-ranlib libtaph.a

@@ -1,0 +1,7 @@
+/maps/projects/fernandezguerra/apps/repos/libtaph/build-local/CMakeFiles/taph.dir
+/maps/projects/fernandezguerra/apps/repos/libtaph/build-local/CMakeFiles/edit_cache.dir
+/maps/projects/fernandezguerra/apps/repos/libtaph/build-local/CMakeFiles/rebuild_cache.dir
+/maps/projects/fernandezguerra/apps/repos/libtaph/build-local/CMakeFiles/list_install_components.dir
+/maps/projects/fernandezguerra/apps/repos/libtaph/build-local/CMakeFiles/install.dir
+/maps/projects/fernandezguerra/apps/repos/libtaph/build-local/CMakeFiles/install/local.dir
+/maps/projects/fernandezguerra/apps/repos/libtaph/build-local/CMakeFiles/install/strip.dir

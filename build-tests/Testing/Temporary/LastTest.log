@@ -1,0 +1,19 @@
+Start testing: Apr 27 13:48 CEST
+----------------------------------------------------------
+1/1 Testing: damage_context_profile
+1/1 Test: damage_context_profile
+Command: "/maps/projects/fernandezguerra/apps/repos/libdart-damage/build-tests/test_damage_context_profile"
+Directory: /maps/projects/fernandezguerra/apps/repos/libdart-damage/build-tests
+"damage_context_profile" start time: Apr 27 13:48 CEST
+Output:
+----------------------------------------------------------
+all DamageContextProfile tests passed
+<end of output>
+Test time =   0.00 sec
+----------------------------------------------------------
+Test Passed.
+"damage_context_profile" end time: Apr 27 13:48 CEST
+"damage_context_profile" time elapsed: 00:00:00
+----------------------------------------------------------
+
+End testing: Apr 27 13:48 CEST
