@@ -403,6 +403,22 @@ and dart's Pass-2 clip picking it up automatically.
 
 ## 4. REFACTOR `fqdup/src/profile.cpp` — collapse the SE path into `profile_reads()`
 
+> ⚠️ **CORRECTION (2026-07-15) — the "delete the SE pre-scan" step below is NOT byte-identical.**
+> The SE pre-scan buffer (`se_scan_buf`) has a SECOND consumer the table omits: it builds
+> `prescan_lsd_hist` (`profile.cpp:399-401`) → `prov_edges` (`compute_lsd_edges`, `:408`) → each
+> worker's `lbs.configure(prov_edges)` + `lsd_prov_edges` (`:414-415`). And the LSD **fusion** uses
+> those provisional edges DIRECTLY as the final fusion edges: `lsd_fuse_edges = states[0].lsd_prov_edges`
+> (`profile.cpp:705`). They are never recomputed from the full data — so deleting the SE pre-scan
+> changes the LSD bin edges and the fused LSD result is NOT byte-identical.
+>
+> **Correct scope for §4:** keep fqdup's SE **pre-scan** (it does triple duty: adapter stubs +
+> `prov_edges` + the buffered reads), and collapse only the **full pass** onto `profile_reads`, passing
+> `precomputed_stubs` so no second stub-scan runs, and a `PerReadHook` that replicates `worker_fn`'s
+> ENTIRE side-channel set (`lbs.update`, `lsd_cnt`, `lsd_hist`, `ox_fwd`/`ox_rev`, the read/len
+> counters) — NOT just `lsd_hist`. Then validate byte-identity on the 435M-read gold library
+> (`LV7008960924-18S-C-eDNA-ds_S41`, gold md5 `ca77a961…`) before committing. This is a separate,
+> gold-gated change; it does not block dart (dart pins libtaph, not fqdup).
+
 **Keep the paired / `states_pe` path completely untouched.** Only the single-end / merged (`have_merged`)
 pieces collapse. `states` still exists — its `SampleDamageProfile` member is now unused on the SE path
 (the hook fills only the side channels), but `lbs`, `lsd_cnt`, `lsd_prov_edges`, `lsd_hist`, `ox_fwd`,
@@ -509,6 +525,21 @@ pass (`469-517`) are **verbatim unchanged**.
 ---
 
 ## 5. REFACTOR `dart/src/main.cpp` — self-profile via `profile_reads()`
+
+> ✅ **DONE (2026-07-15), branch `feat/libtaph-perread-damage`.** Implemented with two deliberate
+> deviations from the plan below, both behavior-preserving:
+> 1. **EM-training kept, not dropped.** §5d proposed dropping `em_training_seqs` /
+>    `train_periodic_model`. That feeds Pass-2 gene prediction (not the damage gate), so dropping it
+>    would silently change ORF output. Instead it is **preserved via a `PerReadHook`** that captures
+>    60–200 bp clipped reads into per-thread buffers, flattened in tid order after the pass. This is
+>    exactly the side-channel use the hook exists for.
+> 2. **Pre-scan reads `prof_in`, not `-i`.** The standalone adapter pre-scan (§5c) now scans the same
+>    `prof_in` reads that are profiled (fqdup-faithful: detect stubs on the reads you profile), then
+>    applies them to `-i` in Pass 2. Stubs are library-level, so this is consistent with §8.2.
+>
+> Also fixed a latent contract bug found while wiring `--profile-sample 0`: `run_prescan` treated
+> `prescan_reads == 0` as "scan nothing" (`0 < 0`), contradicting the documented "0 = all". Fixed in
+> `libtaph/src/damage_profiler.cpp` (map 0 → unbounded). No golden used 0, so no golden moved.
 
 ### 5a. Delete Pass-1.5 metamatch (`main.cpp:437-525`)
 
@@ -801,13 +832,23 @@ from the return in the name of minimalism.
 ### 8.3 Pin handoff — this is what unblocks the dart rerun
 
 dart pins libtaph: `dart/CMakeLists.txt:42` `LIBTAPH_PINNED_SHA = 14b95f1…`, and the guard is
-**FATAL** on any HEAD/tree mismatch. So the moment you commit `profile_reads()`:
+**FATAL** on any HEAD/tree mismatch.
 
-1. Commit libtaph and **give the dart session the new commit SHA**. Push/tag it if possible — libtaph
-   `14b95f1` is currently **unpushed and untagged**, so dart can only reach the new commit via the local
-   checkout path.
-2. The dart session bumps `LIBTAPH_PINNED_SHA` 14b95f1 → `<new sha>`, rebuilds `dart/build/`, and runs
-   the chain. dart will not configure until that bump.
+**DONE (2026-07-15):** `profile_reads()` + the `run_prescan` 0=all fix are committed on libtaph `main`.
+
+- Commit 1 `3054faf` (parent `14b95f1`): "profile_reads: unified SE/merged engine".
+- Commit 2 (this session, **supersedes `3054faf` as the pin**): `run_prescan` 0=all fix + docs
+  (api.md, changelog.md) + this handoff reconciliation. **Pin to libtaph HEAD** —
+  `git -C "$REPOS/libtaph" rev-parse HEAD` on `main`.
+- Build + ctest on a compute node: **6/6 pass** (incl. `count_table_golden`,
+  `golden_verdict_regression`) at both commits — no golden moved.
+- ⚠️ Both commits are **unpushed and untagged** (WIRE-AND-HOLD). dart reaches HEAD only
+  via the local libtaph checkout at `…/apps/repos/libtaph` on `main`, which must be **clean**
+  (dart's CMake guard FATALs on a dirty tree).
+
+**dart session action:** bump `LIBTAPH_PINNED_SHA` 14b95f1 → `<libtaph HEAD>`, rebuild
+`dart/build/`, run the chain. dart will not configure until that bump. (The dart-side §5 code
+refactor itself is already applied on `feat/libtaph-perread-damage`.)
 
 ### 8.4 Pin the canonical reference read set (byte-identity depends on it)
 
